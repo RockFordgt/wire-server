@@ -1,25 +1,35 @@
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE PackageImports             #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
 
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Spar.API where
+
+-- This package depends on both types-common, swagger2, so there is no away around this name clash
+-- other than -XPackageImports.
+import "swagger2" Data.Swagger hiding (Header(..))
 
 import Bilge
 import Control.Lens
 import Control.Monad.Except
 import Data.Metrics (metrics)
+import Data.Proxy
 import Data.String.Conversions (ST, cs)
 import Data.String (fromString)
 import GHC.Stack
 import Network.HTTP.Client (responseTimeoutMicro)
 import Servant
+import Servant.Swagger
 import Spar.API.Instances ()
 import Spar.App
 import Spar.Options
@@ -28,12 +38,15 @@ import Util.Options (epHost, epPort)
 
 import qualified Brig.Types.User as Brig
 import qualified Data.Id as Brig
+import qualified Data.X509 as X509
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.Wai.Utilities.Server as WU
 import qualified SAML2.WebSSO as SAML
+import qualified Servant.Multipart as SM
 import qualified Spar.Data as Data
 import qualified Spar.Intra.Brig as Brig
 import qualified System.Logger as Log
+import qualified URI.ByteString as URI
 
 runServer :: Opts -> IO ()
 runServer sparCtxOpts = do
@@ -66,6 +79,7 @@ app ctx = SAML.setHttpCachePolicy
         $ serve (Proxy @API) (enter (NT (SAML.nt @Spar ctx)) api :: Server API)
 
 type API = "i" :> "status" :> Get '[JSON] ()
+      :<|> "sso" :> "api-docs" :> Get '[JSON] Swagger
       :<|> APIMeta
       :<|> APIAuthReq
       :<|> APIAuthResp
@@ -84,6 +98,7 @@ type IdpDelete  = Header "Z-User" Brig.UserId :> "sso" :> "identity-providers" :
 
 api :: ServerT API Spar
 api =  pure ()
+  :<|> pure (toSwagger (Proxy @API))
   :<|> SAML.meta appName (Proxy @API) (Proxy @APIAuthResp)
   :<|> SAML.authreq
   :<|> SAML.authresp onSuccess
@@ -143,3 +158,45 @@ initializeIdP :: (MonadError ServantErr m, SAML.SP m) => NewIdP -> Brig.TeamId -
 initializeIdP (NewIdP _idpMetadata _idpIssuer _idpRequestUri _idpPublicKey) _idpExtraInfo = do
   _idpId <- SAML.IdPId <$> SAML.createUUID
   pure SAML.IdPConfig {..}
+
+
+----------------------------------------------------------------------
+-- swagger
+
+-- FUTUREWORK: push orphans upstream to saml2-web-sso, servant-multipart
+
+-- TODO: steal from https://github.com/haskell-servant/servant-swagger/blob/master/example/src/Todo.hs
+
+instance ToSchema Swagger where
+  declareNamedSchema _proxy = genericDeclareNamedSchema defaultSchemaOptions (Proxy @())
+    & mapped.schema.description ?~ "The output you are looking at (hiding details)."
+
+instance HasSwagger route => HasSwagger (SM.MultipartForm SM.Mem resp :> route) where
+  toSwagger _proxy = toSwagger (Proxy @route)
+
+instance ToParamSchema Brig.TeamId
+instance ToParamSchema Brig.UserId
+instance ToParamSchema SAML.IdPId
+instance ToSchema Brig.TeamId
+instance ToSchema Brig.UserId
+instance ToSchema NewIdP
+instance ToSchema SAML.AuthnRequest
+instance ToSchema (SAML.FormRedirect SAML.AuthnRequest)
+instance ToSchema (SAML.IdPConfig Brig.TeamId)
+instance ToSchema SAML.IdPId
+instance ToSchema (SAML.ID SAML.AuthnRequest)
+instance ToSchema SAML.Issuer
+instance ToSchema SAML.Time
+instance ToSchema SAML.Version
+
+instance ToSchema X509.SignedCertificate where
+  declareNamedSchema _proxy = genericDeclareNamedSchema defaultSchemaOptions (Proxy @())
+
+instance ToSchema SAML.SPDesc where
+  declareNamedSchema _proxy = genericDeclareNamedSchema defaultSchemaOptions (Proxy @())
+
+instance ToSchema URI.URI where
+  declareNamedSchema _proxy = genericDeclareNamedSchema defaultSchemaOptions (Proxy @())
+
+instance ToSchema SAML.Void where
+  declareNamedSchema _proxy = genericDeclareNamedSchema defaultSchemaOptions (Proxy @())

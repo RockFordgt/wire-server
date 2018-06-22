@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 38931f044032b1429a813e2a492c11d5ce7cee71b51c37da72255020f3382730
+-- hash: 8145c32a6bd9da715f8fe6bea2727c92d5b841dda912dc2e8e61126c85c2cf23
 
 name:           spar
 version:        0.1
@@ -34,6 +34,7 @@ library
   ghc-options: -j -O2 -Wall -Wno-redundant-constraints -fwarn-tabs -Werror
   build-depends:
       aeson
+    , aeson-pretty
     , base
     , bilge
     , binary
@@ -55,7 +56,9 @@ library
     , servant
     , servant-multipart
     , servant-server
+    , servant-swagger
     , string-conversions
+    , swagger2
     , text
     , time
     , tinylog
@@ -78,6 +81,7 @@ executable spar
   ghc-options: -j -O2 -Wall -Wno-redundant-constraints -fwarn-tabs -Werror
   build-depends:
       aeson
+    , aeson-pretty
     , base
     , bilge
     , binary
@@ -99,8 +103,10 @@ executable spar
     , servant
     , servant-multipart
     , servant-server
+    , servant-swagger
     , spar
     , string-conversions
+    , swagger2
     , text
     , time
     , tinylog
@@ -125,6 +131,7 @@ executable spar-integration
   ghc-options: -j -O2 -Wall -Wno-redundant-constraints -fwarn-tabs -Werror
   build-depends:
       aeson
+    , aeson-pretty
     , base
     , bilge
     , binary
@@ -148,8 +155,10 @@ executable spar-integration
     , servant
     , servant-multipart
     , servant-server
+    , servant-swagger
     , spar
     , string-conversions
+    , swagger2
     , text
     , time
     , tinylog
@@ -173,6 +182,7 @@ executable spar-schema
   ghc-options: -j -O2 -Wall -Wno-redundant-constraints -fwarn-tabs -Werror
   build-depends:
       aeson
+    , aeson-pretty
     , base
     , bilge
     , binary
@@ -194,8 +204,10 @@ executable spar-schema
     , servant
     , servant-multipart
     , servant-server
+    , servant-swagger
     , spar
     , string-conversions
+    , swagger2
     , text
     , time
     , tinylog
@@ -223,6 +235,7 @@ test-suite spec
   build-depends:
       QuickCheck
     , aeson
+    , aeson-pretty
     , base
     , bilge
     , binary
@@ -246,8 +259,10 @@ test-suite spec
     , servant
     , servant-multipart
     , servant-server
+    , servant-swagger
     , spar
     , string-conversions
+    , swagger2
     , text
     , time
     , tinylog
